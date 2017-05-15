@@ -56,7 +56,7 @@ for current_input in inputs_series:
 logits_series = [tf.matmul(state, W2) + b2 for state in states_series] #Broadcasted addition
 predictions_series = [tf.nn.softmax(logits) for logits in logits_series]
 
-losses = [tf.nn.sparse_softmax_cross_entropy_with_logits(logits, labels) for logits, labels in zip(logits_series, labels_series)]
+losses = [tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels) for logits, labels in zip(logits_series, labels_series)]
 total_loss = tf.reduce_mean(losses)
 
 train_step = tf.train.AdagradOptimizer(0.3).minimize(total_loss)
@@ -84,3 +84,41 @@ def plot(loss_list, predictions_series, batchX, batchY):
     plt.pause(0.0001)
 
     pass
+
+with tf.Session() as sess:
+    tf.global_variables_initializer().run()
+    plt.ion()
+    plt.figure()
+    plt.show()
+    loss_list = []
+
+    for epoch_idx in range(num_epochs):
+        x,y = generateData()
+        _current_state = np.zeros((batch_size, state_size))
+
+        print("New data, epoch", epoch_idx)
+
+        for batch_idx in range(num_batches):
+            start_idx = batch_idx * truncated_backprop_length
+            end_idx = start_idx + truncated_backprop_length;
+
+            batchX = x[:, start_idx:end_idx]
+            batchY = y[:, start_idx:end_idx]
+
+            _total_loss, _train_step, _current_state, _predictions_series = sess.run(
+                [total_loss, train_step, current_state, predictions_series],
+                feed_dict={
+                    batchX_placeholder:batchX,
+                    batchY_placeholder:batchY,
+                    init_state:_current_state
+                })
+
+            loss_list.append(_total_loss)
+
+            if batch_idx % 100 == 0:
+                print("Step", batch_idx, "Loss", _total_loss)
+                plot(loss_list, _predictions_series, batchX, batchY)
+
+plt.ioff()
+plt.show()
+
